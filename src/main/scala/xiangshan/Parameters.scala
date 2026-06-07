@@ -60,6 +60,10 @@ case class XSCoreParameters
   VLEN: Int = 128,
   ELEN: Int = 64,
   HSXLEN: Int = 64,
+  HasMptCheck: Boolean = false, //enable mpt
+  HasMptCheckDefault: Boolean = false, // hardwired testing code: fake 2M MPT table
+  HasMptCheckDefault4k: Boolean = false, // hardwired testing code: fake 4k MPT table
+  HasMptInodeOpt: Boolean = false, // hardwired testing code: skip mpt check for non-leaf ptw nodes
   HasBitmapCheck: Boolean = true,
   HasBitmapCheckDefault: Boolean = false,
   HasMExtension: Boolean = true,
@@ -79,6 +83,7 @@ case class XSCoreParameters
   HasCustomCSRCacheOp: Boolean = true,
   FetchWidth: Int = 8,
   AsidLength: Int = 16,
+  SdidLength: Int = 6,
   VmidLength: Int = 14,
   EnableBPU: Boolean = true,
   EnableBPD: Boolean = true,
@@ -606,7 +611,11 @@ trait HasXSParameter {
   def hartIDDmodeWidth = coreParams.hartIDDmodeWidth
   def enableResetMtvec = coreParams.enableResetMtvec
   val xLen = XLEN
-
+  assert(!(HasMptCheck == true && HasBitmapCheck == true), "Conflicts: MPT and Bitmap can't be used together")
+  def HasMptCheck = coreParams.HasMptCheck && !coreParams.HasBitmapCheck
+  def HasMptCheckDefault = coreParams.HasMptCheckDefault
+  def HasMptCheckDefault4k = coreParams.HasMptCheckDefault4k
+  def HasMptInodeOpt = coreParams.HasMptInodeOpt
   def HasBitmapCheck = coreParams.HasBitmapCheck
   def HasBitmapCheckDefault = coreParams.HasBitmapCheckDefault
   def HasMExtension = coreParams.HasMExtension
@@ -647,7 +656,7 @@ trait HasXSParameter {
       coreParams.VAddrBitsSv39 max coreParams.GPAddrBitsSv39x4
     }
   }
-
+  def SdidLength = coreParams.SdidLength
   def AsidLength = coreParams.AsidLength
   def VmidLength = coreParams.VmidLength
   def ReSelectLen = coreParams.ReSelectLen

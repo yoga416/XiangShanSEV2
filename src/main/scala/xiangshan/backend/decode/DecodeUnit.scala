@@ -512,6 +512,11 @@ object HypervisorDecode extends DecodeConstants {
   )
 }
 
+object MptFenceDecode extends DecodeConstants {
+  override val decodeArray: Array[(BitPat, XSDecodeBase)] = Array(
+    MFENCE -> XSDecode(SrcType.reg, SrcType.reg, SrcType.X, FuType.fence, FenceOpType.mfence, SelImm.X, noSpec = T, blockBack = T, flushPipe = T),
+  )
+}
 object ZicondDecode extends DecodeConstants {
   override val decodeArray: Array[(BitPat, XSDecodeBase)] = Array(
     CZERO_EQZ   -> XSDecode(SrcType.reg, SrcType.reg, SrcType.X, FuType.alu, ALUOpType.czero_eqz, SelImm.X, xWen = T, canRobCompress = T),
@@ -802,7 +807,6 @@ class DecodeUnit(implicit p: Parameters) extends XSModule with DecodeUnitConstan
   val ctrl_flow = io.enq.ctrlFlow // input with RVC Expanded
 
   private val inst: XSInstBitFields = io.enq.ctrlFlow.instr.asTypeOf(new XSInstBitFields)
-
   val decode_table: Array[(BitPat, List[BitPat])] = XDecode.table ++
     FpDecode.table ++
 //    FDivSqrtDecode.table ++
@@ -815,7 +819,8 @@ class DecodeUnit(implicit p: Parameters) extends XSModule with DecodeUnitConstan
     VecDecoder.table ++
     ZicondDecode.table ++
     ZimopDecode.table ++
-    ZfaDecode.table
+    ZfaDecode.table ++
+    (if (HasMptCheck) MptFenceDecode.table else Array.empty[(BitPat, List[BitPat])])
 
   require(decode_table.map(_._2.length == 15).reduce(_ && _), "Decode tables have different column size")
   // assertion for LUI: only LUI should be assigned `selImm === SelImm.IMM_U && fuType === FuType.alu`
@@ -893,6 +898,7 @@ class DecodeUnit(implicit p: Parameters) extends XSModule with DecodeUnitConstan
 
   private val exceptionII =
     decodedInst.selImm === SelImm.INVALID_INSTR ||
+    (if (HasMptCheck) (io.fromCSR.illegalInst.mfence.get && FuType.FuTypeOrR(decodedInst.fuType, FuType.fence) && decodedInst.fuOpType === FenceOpType.mfence) else false.B) ||
     io.fromCSR.illegalInst.sfenceVMA  && FuType.FuTypeOrR(decodedInst.fuType, FuType.fence) && decodedInst.fuOpType === FenceOpType.sfence  ||
     io.fromCSR.illegalInst.sfencePart && FuType.FuTypeOrR(decodedInst.fuType, FuType.fence) && decodedInst.fuOpType === FenceOpType.nofence ||
     io.fromCSR.illegalInst.hfenceGVMA && FuType.FuTypeOrR(decodedInst.fuType, FuType.fence) && decodedInst.fuOpType === FenceOpType.hfence_g ||

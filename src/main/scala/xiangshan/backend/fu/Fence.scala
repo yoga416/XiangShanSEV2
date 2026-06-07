@@ -67,7 +67,7 @@ class Fence(cfg: FuConfig)(implicit p: Parameters) extends FuncUnit(cfg) {
   val useVmid   = io.in.bits.ctrl.fuOpType === FenceOpType.hfence_g
   val fenceAsid = io.in.bits.data.src(1)(AsidLength - 1, 0)
   val fenceVmid = Cat(0.U((AsidLength - VmidLength).W), io.in.bits.data.src(1)(VmidLength - 1, 0))
-  sfence.valid := state === s_tlb && (func === FenceOpType.sfence || func === FenceOpType.hfence_v || func === FenceOpType.hfence_g)
+  sfence.valid := state === s_tlb && (func === FenceOpType.sfence || func === FenceOpType.hfence_v || func === FenceOpType.hfence_g || (if (HasMptCheck) (func === FenceOpType.mfence) else false.B))
   sfence.bits.rs1  := uop.data.imm(4, 0) === 0.U
   sfence.bits.rs2  := uop.data.imm(9, 5) === 0.U
   sfence.bits.flushPipe := uop.ctrl.flushPipe.get
@@ -76,9 +76,13 @@ class Fence(cfg: FuConfig)(implicit p: Parameters) extends FuncUnit(cfg) {
   sfence.bits.addr := RegEnable(io.in.bits.data.src(0), io.in.fire)
   sfence.bits.id   := RegEnable(Mux(useVmid, fenceVmid, fenceAsid), io.in.fire)
 
+  if (HasMptCheck) {
+    sfence.bits.mfence.get := func === FenceOpType.mfence
+  } // TODO:implement remaining mfence functionality, not yet finished!!!
+
   when (state === s_idle && io.in.valid) { state := s_wait }
   when (state === s_wait && func === FenceOpType.fencei && sbEmpty) { state := s_icache }
-  when (state === s_wait && ((func === FenceOpType.sfence || func === FenceOpType.hfence_g || func === FenceOpType.hfence_v) && sbEmpty)) { state := s_tlb }
+  when (state === s_wait && ((func === FenceOpType.sfence || func === FenceOpType.hfence_g || func === FenceOpType.hfence_v || (if (HasMptCheck) (func === FenceOpType.mfence) else false.B)) && sbEmpty)) { state := s_tlb }
   when (state === s_wait && func === FenceOpType.fence  && sbEmpty) { state := s_fence }
   when (state === s_wait && func === FenceOpType.nofence  && sbEmpty) { state := s_nofence }
   when (state =/= s_idle && state =/= s_wait) { state := s_idle }
