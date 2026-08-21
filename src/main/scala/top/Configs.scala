@@ -423,8 +423,7 @@ class CVMCompile extends Config((site, here, up) => {
     HasDelayNoencryption = false
   )
   case XSTileKey => up(XSTileKey).map(_.copy(
-    HasBitmapCheck = true,
-    HasBitmapCheckDefault = false))
+    HasBitmapCheck = true))
 })
 
 class CVMTestCompile extends Config((site, here, up) => {
@@ -434,8 +433,7 @@ class CVMTestCompile extends Config((site, here, up) => {
     HasDelayNoencryption = true
   )
   case XSTileKey => up(XSTileKey).map(_.copy(
-    HasBitmapCheck =true,
-    HasBitmapCheckDefault = true))
+    HasBitmapCheck =true))
 })
 
 class MinimalAliasDebugConfig(n: Int = 1) extends Config(
